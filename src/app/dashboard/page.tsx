@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
@@ -11,7 +11,6 @@ import { mockUser, mockCampus } from '@/lib/mock-user'
 import { getWishlist, getRecentlyViewed } from '@/lib/store'
 import Link from 'next/link'
 
-// Inline mock data to avoid import issues
 const mockListings = [
   {
     id: '1',
@@ -63,7 +62,7 @@ const leaderboard = {
   ],
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const searchParams = useSearchParams()
   const [wishlist, setWishlist] = useState<string[]>([])
   const [recentlyViewed, setRecentlyViewed] = useState<string[]>([])
@@ -78,7 +77,6 @@ export default function DashboardPage() {
   const leaving = searchParams.get('leaving') === 'true'
   const search = searchParams.get('q') || ''
 
-  // Filter listings
   let listings = [...mockListings]
   
   if (search) {
@@ -97,7 +95,6 @@ export default function DashboardPage() {
     listings = listings.filter(l => l.leaving_soon)
   }
   
-  // Sort
   switch (sort) {
     case 'oldest':
       listings.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -112,226 +109,115 @@ export default function DashboardPage() {
       listings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   }
 
-  // Get recently viewed listings
-  const recentItems = recentlyViewed
-    .map(id => mockListings.find(l => l.id === id))
-    .filter(Boolean)
-    .slice(0, 4)
+  const recentItems = recentlyViewed.map(id => mockListings.find(l => l.id === id)).filter(Boolean).slice(0, 4)
+  const savedItems = wishlist.map(id => mockListings.find(l => l.id === id)).filter(Boolean).slice(0, 4)
 
-  // Get saved listings
-  const savedItems = wishlist
-    .map(id => mockListings.find(l => l.id === id))
-    .filter(Boolean)
-    .slice(0, 4)
+  return (
+    <main className="flex-1">
+      <div className="bg-gradient-to-r from-white/5 to-white/[0.02] border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="px-3 py-1 bg-white text-black text-xs font-medium">MOVE-OUT SALE</span>
+              <span className="text-white/60 text-sm">Graduation season deals</span>
+            </div>
+            <Link href="/dashboard?leaving=true" className="text-sm text-white/40 hover:text-white transition-colors">View all →</Link>
+          </div>
+        </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
+          <div>
+            <p className="text-white/30 text-sm tracking-[0.2em] uppercase mb-2">{mockCampus.name}</p>
+            <h1 className="text-3xl font-light tracking-tight text-white">Marketplace</h1>
+          </div>
+          <SearchBar />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="p-4 border border-white/5 bg-white/[0.01]">
+            <div className="text-2xl font-light text-white">{mockListings.length}</div>
+            <div className="text-xs text-white/30">Active listings</div>
+          </div>
+          <div className="p-4 border border-white/5 bg-white/[0.01]">
+            <div className="text-2xl font-light text-white">{mockListings.filter(l => l.leaving_soon).length}</div>
+            <div className="text-xs text-white/30">Leaving soon</div>
+          </div>
+          <div className="p-4 border border-white/5 bg-white/[0.01]">
+            <div className="text-2xl font-light text-white">{savedItems.length}</div>
+            <div className="text-xs text-white/30">Saved items</div>
+          </div>
+          <div className="p-4 border border-white/5 bg-white/[0.01]">
+            <div className="text-2xl font-light text-white">{recentItems.length}</div>
+            <div className="text-xs text-white/30">Recently viewed</div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 mb-8">
+          <select value={category} onChange={(e) => { window.location.href = `/dashboard?category=${e.target.value}` }} className="px-4 py-2 bg-white/5 border border-white/10 text-white text-sm">
+            <option value="">All categories</option>
+            <option value="furniture">Furniture</option>
+            <option value="books">Books</option>
+            <option value="electronics">Electronics</option>
+          </select>
+          
+          <select value={sort} onChange={(e) => { window.location.href = `/dashboard?sort=${e.target.value}` }} className="px-4 py-2 bg-white/5 border border-white/10 text-white text-sm">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="price_low">Price: Low to high</option>
+            <option value="price_high">Price: High to low</option>
+          </select>
+
+          {search && (
+            <Badge variant="default">
+              Search: &quot;{search}&quot;
+              <button onClick={() => { window.location.href = '/dashboard' }} className="ml-2">×</button>
+            </Badge>
+          )}
+        </div>
+
+        <div className="grid lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-3">
+            <ListingGrid listings={listings as any} />
+          </div>
+
+          <div className="space-y-6">
+            <div className="border border-white/5 bg-white/[0.01] p-5">
+              <h3 className="text-sm font-medium text-white mb-4">Top Sellers</h3>
+              <div className="space-y-3">
+                {leaderboard.sellers.map((seller, i) => (
+                  <div key={seller.name} className="flex items-center gap-3">
+                    <span className="text-xs text-white/30 w-4">{i + 1}</span>
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/60">{seller.avatar}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white truncate">{seller.name}</p>
+                      <p className="text-xs text-white/30">{seller.sales} sales</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border border-white/10 bg-white/[0.02] p-5">
+              <h3 className="text-sm font-medium text-white mb-2">Invite Friends</h3>
+              <p className="text-xs text-white/40 mb-4">Share CampusCart with classmates</p>
+              <button className="w-full px-4 py-2 bg-white/10 text-white text-sm hover:bg-white/20 transition-colors">Copy Referral Link</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  )
+}
+
+export default function DashboardPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#030303]">
       <Header user={mockUser} />
-      
-      <main className="flex-1">
-        {/* Seasonal Banner */}
-        <div className="bg-gradient-to-r from-white/5 to-white/[0.02] border-b border-white/5">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="px-3 py-1 bg-white text-black text-xs font-medium">MOVE-OUT SALE</span>
-                <span className="text-white/60 text-sm">Graduation season deals - items going fast!</span>
-              </div>
-              <Link href="/dashboard?leaving=true" className="text-sm text-white/40 hover:text-white transition-colors">
-                View all →
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
-            <div>
-              <p className="text-white/30 text-sm tracking-[0.2em] uppercase mb-2">{mockCampus.name}</p>
-              <h1 className="text-3xl font-light tracking-tight text-white">Marketplace</h1>
-            </div>
-            <SearchBar />
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="p-4 border border-white/5 bg-white/[0.01]">
-              <div className="text-2xl font-light text-white">{mockListings.length}</div>
-              <div className="text-xs text-white/30">Active listings</div>
-            </div>
-            <div className="p-4 border border-white/5 bg-white/[0.01]">
-              <div className="text-2xl font-light text-white">{mockListings.filter(l => l.leaving_soon).length}</div>
-              <div className="text-xs text-white/30">Leaving soon</div>
-            </div>
-            <div className="p-4 border border-white/5 bg-white/[0.01]">
-              <div className="text-2xl font-light text-white">{savedItems.length}</div>
-              <div className="text-xs text-white/30">Saved items</div>
-            </div>
-            <div className="p-4 border border-white/5 bg-white/[0.01]">
-              <div className="text-2xl font-light text-white">{recentItems.length}</div>
-              <div className="text-xs text-white/30">Recently viewed</div>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-4 mb-8">
-            <select
-              value={category}
-              onChange={(e) => {
-                const params = new URLSearchParams(searchParams.toString())
-                if (e.target.value) params.set('category', e.target.value)
-                else params.delete('category')
-                window.history.pushState({}, '', `/dashboard?${params.toString()}`)
-                window.location.reload()
-              }}
-              className="px-4 py-2 bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20"
-            >
-              <option value="">All categories</option>
-              <option value="furniture">Furniture</option>
-              <option value="books">Books</option>
-              <option value="electronics">Electronics</option>
-              <option value="misc">Miscellaneous</option>
-            </select>
-            
-            <select
-              value={sort}
-              onChange={(e) => {
-                const params = new URLSearchParams(searchParams.toString())
-                params.set('sort', e.target.value)
-                window.history.pushState({}, '', `/dashboard?${params.toString()}`)
-                window.location.reload()
-              }}
-              className="px-4 py-2 bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20"
-            >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="price_low">Price: Low to high</option>
-              <option value="price_high">Price: High to low</option>
-            </select>
-
-            <label className="flex items-center gap-2 text-sm text-white/50 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={leaving}
-                onChange={(e) => {
-                  const params = new URLSearchParams(searchParams.toString())
-                  if (e.target.checked) params.set('leaving', 'true')
-                  else params.delete('leaving')
-                  window.history.pushState({}, '', `/dashboard?${params.toString()}`)
-                  window.location.reload()
-                }}
-                className="w-4 h-4 bg-white/5 border-white/20"
-              />
-              Leaving soon only
-            </label>
-
-            {search && (
-              <Badge variant="default">
-                Search: "{search}"
-                <button 
-                  onClick={() => {
-                    const params = new URLSearchParams(searchParams.toString())
-                    params.delete('q')
-                    window.location.href = `/dashboard?${params.toString()}`
-                  }}
-                  className="ml-2 hover:text-white"
-                >
-                  ×
-                </button>
-              </Badge>
-            )}
-          </div>
-
-          <div className="grid lg:grid-cols-4 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-3">
-              <ListingGrid listings={listings as any} />
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Leaderboard */}
-              <div className="border border-white/5 bg-white/[0.01] p-5">
-                <h3 className="text-sm font-medium text-white mb-4">Top Sellers</h3>
-                <div className="space-y-3">
-                  {leaderboard.sellers.slice(0, 5).map((seller, i) => (
-                    <div key={seller.name} className="flex items-center gap-3">
-                      <span className="text-xs text-white/30 w-4">{i + 1}</span>
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/60">
-                        {seller.avatar}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white truncate">{seller.name}</p>
-                        <p className="text-xs text-white/30">{seller.sales} sales</p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <svg className="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        <span className="text-xs text-white/50">{seller.rating}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recently Viewed */}
-              {recentItems.length > 0 && (
-                <div className="border border-white/5 bg-white/[0.01] p-5">
-                  <h3 className="text-sm font-medium text-white mb-4">Recently Viewed</h3>
-                  <div className="space-y-3">
-                    {recentItems.map((item: any) => (
-                      <Link key={item.id} href={`/listing/${item.id}`} className="flex items-center gap-3 group">
-                        <div className="w-12 h-12 bg-white/5 overflow-hidden flex-shrink-0">
-                          <img src={item.image_url} alt="" className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white truncate group-hover:text-white/80">{item.title}</p>
-                          <p className="text-xs text-white/30">£{item.price}</p>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Saved Items */}
-              {savedItems.length > 0 && (
-                <div className="border border-white/5 bg-white/[0.01] p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-white">Saved Items</h3>
-                    <Link href="/wishlist" className="text-xs text-white/40 hover:text-white">View all</Link>
-                  </div>
-                  <div className="space-y-3">
-                    {savedItems.map((item: any) => (
-                      <Link key={item.id} href={`/listing/${item.id}`} className="flex items-center gap-3 group">
-                        <div className="w-12 h-12 bg-white/5 overflow-hidden flex-shrink-0">
-                          <img src={item.image_url} alt="" className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white truncate group-hover:text-white/80">{item.title}</p>
-                          <p className="text-xs text-white/30">£{item.price}</p>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Referral */}
-              <div className="border border-white/10 bg-white/[0.02] p-5">
-                <h3 className="text-sm font-medium text-white mb-2">Invite Friends</h3>
-                <p className="text-xs text-white/40 mb-4">Share CampusCart with classmates</p>
-                <button className="w-full px-4 py-2 bg-white/10 text-white text-sm hover:bg-white/20 transition-colors">
-                  Copy Referral Link
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-      
+      <Suspense fallback={<div className="flex-1 flex items-center justify-center text-white/50">Loading...</div>}>
+        <DashboardContent />
+      </Suspense>
       <Footer />
     </div>
   )
