@@ -1,8 +1,7 @@
-import { updateSession } from '@/lib/supabase/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Skip auth checks for now - allow all routes
+  // Auth disabled - allow all routes
   return NextResponse.next()
 }
 
