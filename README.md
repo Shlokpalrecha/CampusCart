@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CampusCart
 
-## Getting Started
+Campus-verified exchange platform for university communities. Buy and sell with fellow students during move-in, move-out, and graduation.
 
-First, run the development server:
+## Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Next.js 15 (App Router)
+- TypeScript
+- Tailwind CSS
+- Supabase (PostgreSQL + Auth + Storage)
+
+## Pilot Campuses
+
+- London School of Economics (@lse.ac.uk)
+- Bennett University (@bennett.edu.in)
+- SPIT Mumbai (@spit.ac.in)
+
+## Setup
+
+### 1. Supabase Setup
+
+1. Create a new project at [supabase.com](https://supabase.com)
+2. Go to SQL Editor and run the contents of `supabase/schema.sql`
+3. Go to Authentication > URL Configuration and add your site URL
+4. Go to Storage and verify the `listings` bucket was created
+
+### 2. Environment Variables
+
+Create `.env.local` in the project root:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Find these values in Supabase: Settings > API
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Local Development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000)
 
-To learn more about Next.js, take a look at the following resources:
+### 4. Deploy to Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Push code to GitHub
+2. Import project in [Vercel](https://vercel.com)
+3. Add environment variables in Vercel project settings
+4. Deploy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 5. Post-Deployment
 
-## Deploy on Vercel
+1. Update Supabase Auth URL Configuration with your Vercel domain
+2. Add `https://your-domain.vercel.app/auth/callback` to redirect URLs
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Features
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- University email verification
+- Campus-specific marketplaces
+- Listing creation with image upload
+- "Leaving Campus" mode with auto-expiry
+- Direct messaging between students
+- Row-level security (users only see their campus)
+
+## Database Schema
+
+- `campuses` - Supported universities
+- `users` - User profiles linked to auth
+- `listings` - Items for sale
+- `messages` - Direct messages between users
+
+## Security
+
+- Email domain validation on signup
+- Row-level security policies
+- Users can only view listings from their campus
+- Users can only message about visible listings
